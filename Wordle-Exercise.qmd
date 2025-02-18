@@ -1,0 +1,115 @@
+---
+title: "Exercise-04"
+author: "Drew"
+format: html
+editor: visual
+---
+
+The rules of **Wordle** are simple: A player has SIX tries to guess a 5-letter word that has been selected at random from a list of possible words. Guesses need to be valid 5-letter words. After each guess, a player receives feedback about how close their guess was to the word, which provides information they can use to try to solve the puzzle. This feedback lets you know whether each letter your guess is either \[1\] *in the solution word and in the correct spot*, \[2\] *in the solution word but in the wrong position*, or \[3\] *not in the solution word*. In app/browser versions of **Wordle**, this feedback is provided visually using colors, but that need not be the case.
+
+```{r}
+#load packages
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(readr)
+
+#make function to load files
+load_dictionary <- function(filename) {
+  url <- paste0("https://raw.githubusercontent.com/drhynes/exercise-04/refs/heads/main/", filename, ".txt")
+  data <- readLines(url)
+  return(data)
+}
+
+#load reference files
+valid_list <- load_dictionary("google-10000-english-usa-no-swears")
+solution_list <- load_dictionary("collins-scrabble-words-2019")
+```
+
+-   Winnow your variable **solution_list** to only include words that are included in **valid_list**. There are multiple ways that you could do this, but the set operation function, `intersection()` is an easy way. Use ***R*** help to look at the documentation for the `intersection()` function to see if you can get that to work. How many words are in your updated **solution_list** vector?
+
+-   **There are 8337 word, including the header**
+
+solution_list \<- intersect(solution_list, valid_list)
+
+```{r}
+#collapse reference files
+solution_list <- intersect(solution_list, valid_list)
+```
+
+-   Write a custom function called `pick_solution()` that \[1\] removes all words from **solution_list** that are not 5 letters in length, \[2\] then randomly chooses a single word from those that remain, and \[3\] then splits that word into a vector of single-character elements. You should be able to pass your **solution_list** vector as the argument to the function.
+
+```{r}
+#create funstion to pick solution
+pick_solution <- function(solution_list){
+  solution_list <- solution_list[nchar(solution_list) == 5] #make all possibilities 5 letters
+  solution_list <- sample(solution_list, 1) #pick one random solution word
+  solution_list <- strsplit(solution_list, "")[[1]] #separate that solution word into a list of letters
+  return(solution_list)
+}
+#pick solution
+solution <- pick_solution(solution_list)
+```
+
+Now, to tackle the bulk of the problem, create two more functions. The first should be called `play_wordle()` and it should take three arguments: \[1\] the answer to the puzzle (the value of your **solution** variable), \[2\] a list of valid guesses (the contents of your **valid_list** variable), and \[3\] a value for “number of guesses”, which you should set to the original **Wordle** game default of 6.
+
+```{r}
+#make function to evaluate functions
+evaluate_guess <- function(guess, solution) {
+  return_string <- c("-", "-", "-", "-", "-")
+  for (x in 1:5) {
+    if (guess[x] == solution[x]) {
+      return_string[x] <- "*" #mark correct positions
+    } else if (guess[x] %in% solution) {
+      return_string[x] <- "+" #mark present characters
+    } else {
+      return_string[x] <- "-" #mark in correct characters
+    }
+  }
+  return(return_string)
+}
+#create wordle function
+play_wordle <- function(solution, valid_list, number_of_guesses = 6) {
+  #print intro message
+  print("You have 6 chances to guess a 5 letter word.")
+  print("Your guess will return the following values as feedback:")
+  print("*: letter is both in the solution and in the correct position")
+  print("+: letter is in the solution, but in the wrong position")
+  print("-: letter is not in the solution")
+  #set variables
+  max_guesses = 6
+  word_length = 5
+  guesses_left = max_guesses
+  available_letters = LETTERS
+  #make while loop for what happens for each guess
+  while (guesses_left > 0) {
+    #make descriptive message preceding each guess
+    guesses_left_message = paste("Unguessed letters:", paste(available_letters, collapse = ", "))
+    print(guesses_left_message)
+    guess <- readline(prompt = "Enter your guess: ") #prompt guess
+    guess <- toupper(guess) #make guess upper case
+    if (nchar(guess) != word_length) {
+      print("Your word must be 5 letters long")
+      next #if word is not correct length, reset
+    }
+    if (!(guess %in% valid_list)) {
+      print("That is not a valid guess")
+      next #if word is not valid, reset
+    }
+    guess <- unlist(strsplit(guess, "")) #if valid and correct length, separate guess into list of letters
+    return_string <- evaluate_guess(guess, solution) #evaluate the guess
+    if (all(return_string == "*")) {
+      print("You have won the game!") #if answer is correct, tell them they won and end the game
+      break 
+    } else {
+      print(return_string) #if not right answer, return the clues
+    }
+    guesses_left <- guesses_left - 1 #decrease amount of guesses remaining
+    available_letters <- setdiff(available_letters, guess) #remove guessed letters from list
+  }
+  if (guesses_left == 0) {
+    print("You have lost the game.") #if out of guesses, tell them that they lost
+  }
+  }
+play_wordle(solution, valid_list) #run the play wordle function
+```
